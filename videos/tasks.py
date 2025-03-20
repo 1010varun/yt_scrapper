@@ -20,11 +20,11 @@ def fetch_youtube_videos(search_query=None):
     cache_key = f"youtube_page_token_{query}"
     page_token = cache.get(cache_key, None)
 
-    print(settings.YOUTUBE_API_KEY)
+    api_key = get_next_key()
     
     url = (
         f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={query}"
-        f"&maxResults=10&order=date&type=video&key=AIzaSyBAO-9nVB40Fl146SzLDywXUZ_e9KuE9u0"
+        f"&maxResults=10&order=date&type=video&key={api_key}"
     )
     if page_token:
         url += f"&pageToken={page_token}"
@@ -37,6 +37,12 @@ def fetch_youtube_videos(search_query=None):
     try:
         logger.info(f"Fetching videos for query: {query}, pageToken: {page_token}")
         response = requests.get(url, headers=headers)
+
+        if response.status_code == 403 and 'quota' in response.text.lower():
+            logger.warning(f"API quota exceeded for key: {api_key}")
+            rotate_key()
+            return fetch_youtube_videos(search_query)
+        
         response.raise_for_status()
         data = response.json()
 
@@ -90,3 +96,20 @@ def ensure_periodic_task(query):
             args=json.dumps([query])
         )
         logger.info(f"Added new periodic task for query: {query}")
+
+def get_next_key():
+    if not settings.YOUTUBE_API_KEYS:
+        return settings.YOUTUBE_API_KEY 
+        
+    current_index = cache.get('youtube_api_key_index', 0)
+    return settings.YOUTUBE_API_KEYS[current_index % len(settings.YOUTUBE_API_KEYS)]
+
+def rotate_key():
+    if not settings.YOUTUBE_API_KEYS:
+        logger.warning("No alternative API keys available")
+        return
+        
+    current_index = cache.get('youtube_api_key_index', 0)
+    next_index = (current_index + 1) % len(settings.YOUTUBE_API_KEYS)
+    cache.set('youtube_api_key_index', next_index)
+    logger.info(f"Rotated to next API key, index: {next_index}")

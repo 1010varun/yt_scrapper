@@ -126,8 +126,12 @@ CACHES = {
     }
 }
 
-YOUTUBE_API_KEY = config('YOUTUBE_API_KEY')
+# YOUTUBE_API_KEY = config('YOUTUBE_API_KEY')
 SEARCH_QUERY = config('SEARCH_QUERY', default='bgmi')
 
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+YOUTUBE_API_KEYS = config('YOUTUBE_API_KEYS', default='', cast=lambda v: [x.strip() for x in v.split(',')])
+print(YOUTUBE_API_KEYS)
+API_KEY_INDEX = 0

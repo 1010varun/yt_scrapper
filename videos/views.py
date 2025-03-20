@@ -25,7 +25,9 @@ class VideoListView(generics.ListAPIView):
 
         if not queryset.exists():
             logger.info(f"No videos found for query: {query}, triggering immediate fetch")
-            fetch_youtube_videos.delay(query)
+            fetch_youtube_videos(query)
             ensure_periodic_task(query)
+
+            queryset = Video.objects.filter(search_query=query).order_by('-published_at')
 
         return queryset
